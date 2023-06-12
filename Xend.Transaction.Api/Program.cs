@@ -21,7 +21,7 @@ namespace Xend.Transaction.Api
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
             
-            builder.Services.AddDbContext<TransactionDbContext>(options => options.UseSqlServer("Data Source=SQL8002.site4now.net;Initial Catalog=db_a88f2f_tradeplafd;User Id=db_a88f2f_tradeplafd_admin;Password=secret#321"));
+            builder.Services.AddDbContext<TransactionDbContext>(options => options.UseSqlServer(""));
 
             builder.Services.AddMemoryCache(); // Add this line to register IMemoryCache
             
