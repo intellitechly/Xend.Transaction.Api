@@ -22,7 +22,7 @@ namespace Xend.Transaction.Api.Services
         private readonly ICryptoApiClient _cryptoApiClient;
         private readonly IMessageBroker _messageBroker;
         private readonly IEventBus _eventBus;
-       
+        private readonly TransactionQueries _transactionQueries;
         private readonly ILogger _logger;
         private readonly IMemoryCache _cache;
         private readonly TransactionDbContext _dbContext;
@@ -30,7 +30,7 @@ namespace Xend.Transaction.Api.Services
             ICryptoApiClient cryptoApiClient,
             IMessageBroker messageBroker,
             IEventBus eventBus,
-           
+            TransactionQueries transactionQueries,
             TransactionDbContext dbContext,
             IMemoryCache cache,
             ILogger<TransactionsService> logger)
@@ -40,30 +40,23 @@ namespace Xend.Transaction.Api.Services
             _eventBus = eventBus;
             _dbContext = dbContext;
             _cache = cache;
-         
+            _transactionQueries = transactionQueries;
             _logger = (ILogger?)logger;
         }
 
-        public async Task UpdateTransactions(UpdateTransactionsCommand command)
+        public async Task<bool> UpdateTransactions(UpdateTransactionsCommand command)
         {
             try
             {
-                // Check if the transaction update request is unique
-                if (IsDuplicateTransactionRequest(command))
-                {
-                    await Console.Out.WriteLineAsync("Duplicate transaction update request received. Ignoring.");
-                    //_logger.Information();
-                    return;
-                }
-
+                //Check if the transaction update request is unique
+             
                 // Query the crypto API for transactions
                 var transactions =  _cryptoApiClient.GetTransactionsAsync(command.WalletAddress, command.CurrencyType);
 
                 // Check if new transactions were received
                 if (transactions.Count > 0)
                 {
-                    // Process the new transactions
-                    foreach (var transaction in transactions)
+                    await Parallel.ForEachAsync(transactions, async (transaction, cancellationToken) =>
                     {
                         // Publish a TransactionReceived event to the event bus
                         var transactionReceivedEvent = new TransactionReceivedEvent
@@ -71,19 +64,21 @@ namespace Xend.Transaction.Api.Services
                             ClientId = command.ClientId,
                             Transaction = transaction
                         };
-                        _eventBus.Publish(transactionReceivedEvent);
+                         _eventBus.Publish(transactionReceivedEvent);
 
                         // Save the transaction in the database
-                        SaveTransaction(transaction);
-                    }
+                         SaveTransaction(transaction);
+                    });
+                    return true;
                 }
+                return false;
             }
             catch (Exception ex)
             {
-              
                 throw; // Rethrow the exception for error handling at a higher level
             }
         }
+
 
         public bool IsDuplicateTransactionRequest(UpdateTransactionsCommand command)
         {
@@ -108,6 +103,7 @@ namespace Xend.Transaction.Api.Services
                 .SetSlidingExpiration(TimeSpan.FromMinutes(5));
             _cache.Set(cacheKey, isDuplicate, cacheEntryOptions);
 
+            isDuplicate = false;
             // Return the result
             return isDuplicate;
         }
@@ -120,13 +116,15 @@ namespace Xend.Transaction.Api.Services
 
         public  async Task<WalletTransaction> GetTransactionsByClientIdAsync( int clientId)
         {
-            var model = _dbContext.Transactions.Where(x => x.ClientId == clientId).FirstOrDefault();
+            var model = await _transactionQueries.GetTransactionsByClientIdQuery(_dbContext, clientId);
+
             return model;
+        
         }
 
         public void SaveTransaction(WalletTransaction transaction)
         {
-            _dbContext.Transactions.Add(transaction);
+            _dbContext.Transactions.AddAsync(transaction);
              _dbContext.SaveChangesAsync();
         }
 

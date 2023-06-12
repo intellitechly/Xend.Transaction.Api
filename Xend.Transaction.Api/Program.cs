@@ -5,6 +5,7 @@ using RabbitMQ.Client;
 using Xend.Transaction.Api.Conf;
 using Xend.Transaction.Api.Contracts;
 using Xend.Transaction.Api.MiddleWare;
+using Xend.Transaction.Api.PreCompiledQ;
 using Xend.Transaction.Api.Services;
 
 namespace Xend.Transaction.Api
@@ -19,11 +20,13 @@ namespace Xend.Transaction.Api
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
-        
+            
             builder.Services.AddDbContext<TransactionDbContext>(options => options.UseSqlServer("Data Source=SQL8002.site4now.net;Initial Catalog=db_a88f2f_tradeplafd;User Id=db_a88f2f_tradeplafd_admin;Password=secret#321"));
 
             builder.Services.AddMemoryCache(); // Add this line to register IMemoryCache
+            
             builder.Services.AddScoped<TransactionsService>();
+            builder.Services.AddScoped<TransactionQueries>();
             builder.Services.AddScoped<ITransactionCacheService, TransactionCacheService>();
             builder.Services.AddScoped<IEventBus, EventBus>(provider =>
             {
@@ -52,7 +55,7 @@ namespace Xend.Transaction.Api
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
-           // app.UseMiddleware<ExceptionHandlingMiddleware>();
+           //app.UseMiddleware<ExceptionHandlingMiddleware>();
             app.UseHttpsRedirection();
 
             app.UseAuthorization();

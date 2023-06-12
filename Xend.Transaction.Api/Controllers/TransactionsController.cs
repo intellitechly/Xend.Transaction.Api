@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Xend.Transaction.Api.Conf;
+using Xend.Transaction.Api.Data.Entities;
 using Xend.Transaction.Api.Data.Sequence;
 using Xend.Transaction.Api.Handlers;
 using Xend.Transaction.Api.Services;
@@ -10,14 +11,16 @@ namespace Xend.Transaction.Api.Controllers
     {
         private readonly TransactionsService _transactionService;
         private readonly TransactionDbContext _dbContext;
-        public TransactionsController(TransactionsService transactionService)
+        public TransactionsController(TransactionsService transactionService , TransactionDbContext dbContext)
         {
             _transactionService = transactionService;
+            _dbContext = dbContext;
         }
         //[Transactional]
         [HttpPost("UpdateTransation")]
-        public async Task<IActionResult> UpdateTransactions(UpdateTransactionsCommand command)
+        public async Task<IActionResult> UpdateTransactions([FromBody] UpdateTransactionsCommand command)
         {
+
             try
             {
                 // Check if the transaction update request is a duplicate
@@ -28,7 +31,7 @@ namespace Xend.Transaction.Api.Controllers
                 }
 
                 // Update the transactions
-               
+
 
                 // Return a success response
                 return Ok(_transactionService.UpdateTransactions(command));
@@ -49,7 +52,7 @@ namespace Xend.Transaction.Api.Controllers
             try
             {
                 // Retrieve the transactions for the given client ID
-                var transactions =  _transactionService.GetTransactionsByClientIdAsync(clientId);
+                var transactions = _dbContext.Transactions.Where(x => x.ClientId == clientId).ToList();
 
                 // Return the transactions[k[i
                 return Ok(transactions);
