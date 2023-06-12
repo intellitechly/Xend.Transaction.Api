@@ -31,10 +31,10 @@ namespace Xend.Transaction.Api.Controllers
                 }
 
                 // Update the transactions
-
+                _transactionService.UpdateTransactions(command);
 
                 // Return a success response
-                return Ok(_transactionService.UpdateTransactions(command));
+                return Ok();
             }
             catch (Exception ex)
             {
